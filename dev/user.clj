@@ -10,7 +10,8 @@
 (def system
   "A Var containing an object representing the application under
   development."
-  (atom (cards-dev-system {:webserver-port 8004})))
+  (atom (cards-dev-system {:webserver-port 8000})))
+
 (defn go
   "Initializes and starts the system running."
   []

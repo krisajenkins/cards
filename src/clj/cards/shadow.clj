@@ -11,42 +11,43 @@
              om.core datascript sablono.core
              cards.core] #{:cljs}]])
 
+(def build-config
+  {:dev {:resource-paths ["src/cljs"]
+         :optimizations :simple
+         :pretty-print false
+         :work-dir (io/file "target/cljs-work")
+         :public-dir (io/file "resources/dev")
+         :public-path ""}
+   :prod {:resource-paths ["src/cljs"]
+          :optimizations :advanced
+          :pretty-print false
+          :work-dir (io/file "target/cljs-work")
+          :public-dir (io/file "resources/prod")
+          :externs ["react/externs/react.js"]}})
+
 (defn configure-modules [state modules]
   (reduce (fn [state settings]
             (apply shadow/step-configure-module state settings))
           state
           modules))
 
-(defn initial-build-step
-  [source-path config]
+(defn find-sources
+  [{:keys [resource-paths] :as state}]
+  (assert resource-paths)
+  (reduce shadow/step-find-resources
+          state
+          resource-paths))
+
+(defn initial-build-state
+  [config]
   (-> (shadow/init-state)
       (shadow/enable-source-maps)
       (merge config)
       (shadow/step-find-resources-in-jars)
-      (shadow/step-find-resources source-path)
+      find-sources
       (shadow/step-finalize-config)
       (shadow/step-compile-core)
       (configure-modules modules)))
-
-(defmulti build-config
-  (fn [type] type))
-
-(defmethod build-config :dev
-  [_]
-  (initial-build-step "src/cljs"
-                      {:optimizations :simple
-                       :pretty-print false
-                       :work-dir (io/file "target/cljs-work")
-                       :public-dir (io/file "resources/dev")
-                       :public-path ""}))
-
-(defmethod build-config :prod
-  [_]
-  (initial-build-step "src/cljs" {:optimizations :advanced
-                                   :pretty-print false
-                                   :work-dir (io/file "target/cljs-work")
-                                   :public-dir (io/file "resources/prod")
-                                   :externs ["react/externs/react.js"]}))
 
 (defmulti build-step
   "Build the project, return the new state."
@@ -73,12 +74,11 @@
 
 (defn rebuild-if-changed!
   "Scans the filesystem for changes, rebuilds if necessary, returns the potentially-modified state."
-  [state scan-for-new-files?]
+  [build-fn state scan-for-new-files?]
   (let [scan-results (shadow/scan-for-modified-files state scan-for-new-files?)]
     (if (seq scan-results)
       (do (println "Files changed!")
-          (build-step :dev
-                      (shadow/reload-modified-files! state scan-results)))
+          (build-fn (shadow/reload-modified-files! state scan-results)))
       state)))
 
 (defrecord ShadowBuildWatcher
@@ -87,7 +87,10 @@
   (start [component]
     (println "Starting Shadow Build")
     (let [scanning-channel (chan) ; Closing the scanning-channel causes the scanner to stop.
-          initial-state (build-step :dev (build-config :dev))]
+          build-fn (partial build-step :dev)
+          initial-state (->> (build-config :dev)
+                             initial-build-state
+                             build-fn)]
       (println "Initial build complete. Watching.")
       (go
         (loop [i 0
@@ -97,7 +100,8 @@
             (when-not (and (= port scanning-channel)
                            (nil? message))
               (recur (mod (inc i) 10)
-                     (rebuild-if-changed! state
+                     (rebuild-if-changed! build-fn
+                                          state
                                           (zero? i)))))))
 
       (assoc component :scanning-channel scanning-channel)))
