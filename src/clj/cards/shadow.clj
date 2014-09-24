@@ -82,13 +82,15 @@
       state)))
 
 (defrecord ShadowBuildWatcher
-    []
+    [build-key]
   component/Lifecycle
-  (start [component]
+  (start [{:keys [build-key]
+           :as component}]
+    (assert (get build-config build-key) "Unknown build-type.")
     (println "Starting Shadow Build")
     (let [scanning-channel (chan) ; Closing the scanning-channel causes the scanner to stop.
-          build-fn (partial build-step :dev)
-          initial-state (->> (build-config :dev)
+          build-fn (partial build-step build-key)
+          initial-state (->> (build-config build-key)
                              initial-build-state
                              build-fn)]
       (println "Initial build complete. Watching.")
@@ -110,4 +112,6 @@
     (println "Stopping Shadow Build")
     (if-let [channel (:scanning-channel component)]
       (close! channel))
-    (dissoc component :scanning-channel)))
+    (assoc component
+      :scanning-channel nil
+      :build-key nil)))

@@ -8,4 +8,4 @@
     :as config-options}]
   (component/system-map
    :webserver (ws/map->Webserver {:port webserver-port})
-   :shadowbuild (shadow/->ShadowBuildWatcher)))
+   :shadowbuild (shadow/->ShadowBuildWatcher :dev)))
