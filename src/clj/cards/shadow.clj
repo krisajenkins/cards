@@ -1,24 +1,15 @@
 (ns cards.shadow
-  (:require [clojure.java.io :as io]
+  (:require [clojure.core.async :refer [go go-loop timeout alts! <! chan close!]]
+            [clojure.java.io :as io]
             [com.stuartsierra.component :as component]
-            ;; [weasel.repl.websocket :as weasel]
             [shadow.cljs.build :as shadow]))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Shadowbuild.
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (def modules
-  [[:cljs '[cljs.core clojure.set clojure.string cljs.core.async] #{}]
-   [:dev '[
-           speclj.core
-           weasel.repl
-           ]
-    #{:cljs}]
-   [:cards '[cards.core
-             sablono.core
-             no.en.core inflections.core
-             ] #{:cljs}]])
+  [[:cljs '[cljs.core clojure.set clojure.string cljs.core.async cljs.reader] #{}]
+   [:devel '[speclj.core weasel.repl cards.devel] #{:cljs}]
+   [:cards '[no.en.core inflections.core
+             om.core datascript sablono.core
+             cards.core] #{:cljs}]])
 
 (defn configure-modules [state modules]
   (reduce (fn [state settings]
@@ -75,22 +66,38 @@
       (shadow/flush-to-disk)
       (shadow/flush-modules-to-disk)))
 
-;; (defn dev-build
-;;   []
-;;   (loop [state (initial-dev-state)]
-;;     (let [new-state (-> state
-;;                         dev-build-step
-;;                         shadow/wait-and-reload!)]
-;;       (recur new-state))))
+(defn rebuild-if-changed!
+  "Scans the filesystem for changes, rebuilds if necessary, returns the potentially-modified state."
+  [state scan-for-new-files?]
+  (let [scan-results (shadow/scan-for-modified-files state scan-for-new-files?)]
+    (if (seq scan-results)
+      (do (println "Files changed!")
+          (dev-build-step (shadow/reload-modified-files! state scan-results)))
+      state)))
 
-(defrecord ShadowBuild
+(defrecord ShadowBuildWatcher
     []
-
   component/Lifecycle
   (start [component]
     (println "Starting Shadow Build")
-    (assoc component :state (dev-build-step (initial-dev-state))))
+    (let [scanning-channel (chan) ; Closing the scanning-channel causes the scanner to stop.
+          initial-state (dev-build-step (initial-dev-state))]
+      (println "Initial build complete. Watching.")
+      (go
+        (loop [i 0
+               state initial-state]
+          (let [t (timeout 200)
+                [message port] (alts! [scanning-channel t])]
+            (when-not (and (= port scanning-channel)
+                           (nil? message))
+              (recur (mod (inc i) 10)
+                     (rebuild-if-changed! state
+                                          (zero? i)))))))
+
+      (assoc component :scanning-channel scanning-channel)))
 
   (stop [component]
     (println "Stopping Shadow Build")
-    (dissoc component :state)))
+    (if-let [channel (:scanning-channel component)]
+      (close! channel))
+    (dissoc component :scanning-channel)))

@@ -1,6 +1,7 @@
 /target
 /resources/dev
 /classes
+/out
 /checkouts
 pom.xml
 pom.xml.asc

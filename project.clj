@@ -20,16 +20,19 @@
   :test-paths ["test/clj" "test/cljs"]
   :plugins []
   :profiles {:dev {:source-paths ["dev"]
-                   :dependencies [[speclj "3.1.0"]
-                                  [com.stuartsierra/component "0.2.2"]
+                   :dependencies [[com.stuartsierra/component "0.2.2"]
                                   [org.clojure/tools.namespace "0.2.5"]
+
+                                  [speclj "3.1.0"]
 
                                   [compojure "1.1.9" :exclusions [ring/ring-core]]
                                   [ring "1.3.1"]
                                   [http-kit "2.1.19"]
                                   [hiccup "1.0.5"]
 
+                                  [com.cemerick/piggieback "0.1.3"]
                                   [weasel "0.4.0-SNAPSHOT"]
 
                                   [optimus "0.15.0"]
-                                  [stasis "2.2.1" :exclusions [org.clojure/clojure]]]}})
+                                  [stasis "2.2.1" :exclusions [org.clojure/clojure]]]
+                   :nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}})
