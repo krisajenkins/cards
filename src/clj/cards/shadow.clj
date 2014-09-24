@@ -17,7 +17,7 @@
           state
           modules))
 
-(defn initial-build-state
+(defn initial-build-step
   [source-path config]
   (-> (shadow/init-state)
       (shadow/enable-source-maps)
@@ -28,26 +28,32 @@
       (shadow/step-compile-core)
       (configure-modules modules)))
 
-(defn initial-dev-state
-  []
-  (initial-build-state "src/cljs"
-                       {:optimizations :simple
-                        :pretty-print false
-                        :work-dir (io/file "target/cljs-work")
-                        :public-dir (io/file "resources/dev")
-                        :public-path ""}))
+(defmulti build-config
+  (fn [type] type))
 
-(defn initial-prod-state
-  []
-  (initial-build-state "src/cljs" {:optimizations :advanced
+(defmethod build-config :dev
+  [_]
+  (initial-build-step "src/cljs"
+                      {:optimizations :simple
+                       :pretty-print false
+                       :work-dir (io/file "target/cljs-work")
+                       :public-dir (io/file "resources/dev")
+                       :public-path ""}))
+
+(defmethod build-config :prod
+  [_]
+  (initial-build-step "src/cljs" {:optimizations :advanced
                                    :pretty-print false
                                    :work-dir (io/file "target/cljs-work")
                                    :public-dir (io/file "resources/prod")
                                    :externs ["react/externs/react.js"]}))
 
-(defn dev-build-step
+(defmulti build-step
   "Build the project, return the new state."
-  [state]
+  (fn [type state] type))
+
+(defmethod build-step :dev
+  [_ state]
   (try
     (-> state
         (shadow/step-compile-modules)
@@ -57,9 +63,8 @@
       (.printStackTrace t)
       state)))
 
-(defn prod-build-step
-  "Build the project."
-  [state]
+(defmethod build-step :prod
+  [_ state]
   (-> state
       (shadow/step-compile-modules)
       (shadow/closure-optimize)
@@ -72,7 +77,8 @@
   (let [scan-results (shadow/scan-for-modified-files state scan-for-new-files?)]
     (if (seq scan-results)
       (do (println "Files changed!")
-          (dev-build-step (shadow/reload-modified-files! state scan-results)))
+          (build-step :dev
+                      (shadow/reload-modified-files! state scan-results)))
       state)))
 
 (defrecord ShadowBuildWatcher
@@ -81,7 +87,7 @@
   (start [component]
     (println "Starting Shadow Build")
     (let [scanning-channel (chan) ; Closing the scanning-channel causes the scanner to stop.
-          initial-state (dev-build-step (initial-dev-state))]
+          initial-state (build-step :dev (build-config :dev))]
       (println "Initial build complete. Watching.")
       (go
         (loop [i 0
