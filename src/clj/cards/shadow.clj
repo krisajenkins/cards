@@ -72,7 +72,6 @@
   (-> state
       (shadow/step-compile-modules)
       (shadow/closure-optimize)
-      (shadow/flush-to-disk)
       (shadow/flush-modules-to-disk)))
 
 (defn rebuild-if-changed!
