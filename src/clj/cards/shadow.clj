@@ -6,14 +6,16 @@
 
 ;;; TODO These config items should be separate.
 (def modules
-  [[:cljs '[cljs.core clojure.set clojure.string cljs.core.async cljs.reader] #{}]
-   [:devel '[speclj.core weasel.repl cards.devel] #{:cljs}]
+  [[:cljs '[cljs.core clojure.set clojure.string cljs.core.async cljs.reader
+            datascript] #{}]
+   [:devel '[weasel.repl cards.devel] #{:cljs}]
+   [:test '[cemerick.cljs.test cards.ui-messages-test] #{:cljs}]
    [:cards '[no.en.core inflections.core
-             om.core datascript sablono.core
+             om.core sablono.core
              cards.core] #{:cljs}]])
 
 (def build-config
-  {:dev {:resource-paths ["src/cljs"]
+  {:dev {:resource-paths ["src/cljs" "test/cljs"]
          :optimizations :simple
          :pretty-print false
          :work-dir (io/file "target/cljs-work")

@@ -6,9 +6,9 @@
 
 (defn add-person
   [db data]
-  (ds/transact! db (merge {:db/id -1
-                           :type :person}
-                          data)))
+  (ds/transact! db [(merge {:db/id -1
+                            :type :person}
+                           data)]))
 
 (defrecord AddPerson
     [name age]

@@ -23,7 +23,7 @@
                    :dependencies [[com.stuartsierra/component "0.2.2"]
                                   [org.clojure/tools.namespace "0.2.5"]
 
-                                  [speclj "3.1.0"]
+                                  [com.cemerick/clojurescript.test  "0.3.1"]
 
                                   [compojure "1.1.9" :exclusions [ring/ring-core]]
                                   [ring "1.3.1"]
