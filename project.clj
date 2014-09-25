@@ -6,11 +6,11 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [org.clojure/core.match "0.2.2"]
-                 [prismatic/schema "0.2.6"]
+                 [prismatic/schema "0.3.0"]
 
                  ;; ClojureScript
                  [org.clojure/clojurescript "0.0-2342"]
-                 [thheller/shadow-build "0.9.3"]
+                 [thheller/shadow-build "0.9.4"]
                  [org.webjars/bootstrap "3.2.0"]
                  [om "0.7.3"]
                  [noencore "0.1.16"]
@@ -21,7 +21,7 @@
   :plugins []
   :profiles {:dev {:source-paths ["dev"]
                    :dependencies [[com.stuartsierra/component "0.2.2"]
-                                  [org.clojure/tools.namespace "0.2.5"]
+                                  [org.clojure/tools.namespace "0.2.7"]
 
                                   [com.cemerick/clojurescript.test  "0.3.1"]
 
