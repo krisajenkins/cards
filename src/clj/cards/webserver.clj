@@ -1,13 +1,22 @@
 (ns cards.webserver
-  (:require [org.httpkit.server :refer [run-server]]
-            [com.stuartsierra.component :as component]
-            [compojure.route :refer [resources]]
-            [compojure.handler :as handler]
+  (:require [clojure.java.io :as io]
             [compojure.core :refer :all]
+            [compojure.handler :as handler]
+            [compojure.route :refer [resources]]
+            [com.stuartsierra.component :as component]
             [hiccup.core :refer [html]]
-            [ring.middleware.reload :refer [wrap-reload]]))
+            [optimus.assets :as assets]
+            [optimus.optimizations :as optimizations]
+            [optimus.strategies :refer [serve-live-assets]]
+            [optimus.prime :as optimus]
+            [optimus.hiccup :refer [link-to-css-bundles link-to-js-bundles]]
+            [org.httpkit.server :refer [run-server]]
+            [ring.middleware.reload :refer [wrap-reload]]
+            [ring.middleware.content-type :refer [wrap-content-type]]
+            [ring.middleware.not-modified :refer [wrap-not-modified]]
+            [stasis.core :as stasis]))
 
-(def main-page
+(def index-page
   [:html {:lang "en"}
    [:head
     [:meta {:charset "utf-8"}]
@@ -20,26 +29,44 @@
 
    (for [script ["/react.js"
                  "/cljs.js"
-                 "/devel.js"
-                 "/cards.js"]]
+                 "/cards.js"
+                 "/devel.js"]]
      [:script {:src script}])])
 
-(defroutes app-routes
-  (GET "/"
-      [] (html main-page))
+(defn files-from-resource
+  [directory files]
+  (zipmap files
+          (map #(slurp (io/resource (str directory %)))
+               files)))
 
-  (resources "/" {:root "META-INF/resources/webjars/bootstrap/3.2.0/"})
-  (resources "/" {:root "react"})
-  (resources "/" {:root "dev"})
-  (resources "/" {:root "public"}))
+(def pages
+  (stasis/merge-page-sources
+   {:dev (stasis/slurp-directory "resources/dev/" #"\.(js|map)$")
+    :public (stasis/slurp-directory "resources/public" #".*\..*")
+    :react (files-from-resource "react" ["/react.js"])
+    :bootstrap (files-from-resource "META-INF/resources/webjars/bootstrap/3.2.0"
+                                    ["/css/bootstrap.css"
+                                     "/css/bootstrap.css.map"
+                                     "/fonts/glyphicons-halflings-regular.woff"
+                                     "/fonts/glyphicons-halflings-regular.ttf"
+                                     "/fonts/glyphicons-halflings-regular.svg"])
+    :generated {"/index.html" (html index-page)}}))
 
-(def app (-> app-routes
-             wrap-reload
-             handler/site))
+((defn export
+   []
+   (let [target "target/site"]
+     (stasis/empty-directory! target)
+     (stasis/export-pages pages target))))
 
-(defrecord Webserver [port shutdown-fn]
+(def app
+  (-> (stasis/serve-pages pages)
+      wrap-reload
+      handler/site))
+
+(defrecord Webserver
+    [port shutdown-fn]
+
   component/Lifecycle
-
   (start [component]
     (println "Starting webserver.")
     (assoc component :shutdown-fn (run-server app

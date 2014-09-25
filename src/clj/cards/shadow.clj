@@ -2,30 +2,35 @@
   (:require [clojure.core.async :refer [go go-loop timeout alts! <! chan close!]]
             [clojure.java.io :as io]
             [com.stuartsierra.component :as component]
-            [shadow.cljs.build :as shadow]))
+            [shadow.cljs.build :as shadow]
+            [clojure.java.shell :refer [sh]]
+            [clojurescript.test.plugin :as cljs-test]))
+
 
 ;;; TODO These config items should be separate.
 (def modules
-  [[:cljs '[cljs.core clojure.set clojure.string cljs.core.async cljs.reader
-            datascript] #{}]
-   [:devel '[weasel.repl cards.devel] #{:cljs}]
-   [:test '[cemerick.cljs.test cards.ui-messages-test] #{:cljs}]
-   [:cards '[no.en.core inflections.core
-             om.core sablono.core
-             cards.core] #{:cljs}]])
+  [[:cljs '[cljs.core
+            clojure.set clojure.string cljs.core.async cljs.reader
+            inflections.core
+            datascript
+            sablono.core
+            om.core] #{}]
+   [:cards '[cards.core] #{:cljs}]
+   [:devel '[cards.devel] #{:cards}]
+   [:test '[cards.ui-messages-test] #{:cards}]])
 
 (def build-config
   {:dev {:resource-paths ["src/cljs" "test/cljs"]
          :optimizations :simple
          :pretty-print false
          :work-dir (io/file "target/cljs-work")
-         :public-dir (io/file "resources/dev")
-         :public-path ""}
-   :prod {:resource-paths ["src/cljs"]
+         :public-dir (io/file "resources/dev")}
+   :prod {:resource-paths ["src/cljs" "test/cljs"]
           :optimizations :advanced
           :pretty-print false
           :work-dir (io/file "target/cljs-work")
           :public-dir (io/file "resources/prod")
+          :preamble ["react/react.js"]
           :externs ["react/externs/react.js"]}})
 
 (defn configure-modules [state modules]
@@ -77,7 +82,9 @@
 (defn rebuild-if-changed!
   "Scans the filesystem for changes, rebuilds if necessary, returns the potentially-modified state."
   [build-fn state scan-for-new-files?]
-  (let [scan-results (shadow/scan-for-modified-files state scan-for-new-files?)]
+  (let [scan-results (concat (shadow/scan-for-modified-files state)
+                             (when scan-for-new-files?
+                               (shadow/scan-for-new-files state)))]
     (if (seq scan-results)
       (do (println "Files changed!")
           (build-fn (shadow/reload-modified-files! state scan-results)))
