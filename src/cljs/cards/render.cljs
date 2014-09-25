@@ -62,17 +62,23 @@
                       :as state}]
       (html [:form.form.col-md-4 {:role "form"}
              [:code (pr-str state)]
-             [:div.form-group
+             [:div.form-group {:class ["has-feedback" "has-success"]}
+              [:label.control-label "Name"]
               [:input.form-control {:type :text
-                                    :on-change (state-event-handler owner :name)
                                     :placeholder "Name"
-                                    :value name}]]
+                                    :value name
+                                    :on-change (state-event-handler owner :name)}]
+              [:span {:class ["form-control-feedback"
+                              "glyphicon" "glyphicon-ok"]}]]
 
-             [:div.form-group
+             [:div.form-group {:class ["has-feedback" "has-success"]}
+              [:label.control-label "Age"]
               [:input.form-control {:type :number
-                                    :on-change (state-event-handler owner :age edn/read-string)
                                     :placeholder "Age"
-                                    :value age}]]
+                                    :value age
+                                    :on-change (state-event-handler owner :age edn/read-string)}]
+              [:span {:class ["form-control-feedback"
+                              "glyphicon" "glyphicon-ok"]}]]
              [:p
               [:button.btn.btn-info.btn-block {:on-click (message-handler owner
                                                                           (msg/map->AddPerson {:name name
