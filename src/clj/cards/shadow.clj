@@ -4,6 +4,7 @@
             [com.stuartsierra.component :as component]
             [shadow.cljs.build :as shadow]))
 
+;;; TODO These config items should be separate.
 (def modules
   [[:cljs '[cljs.core clojure.set clojure.string cljs.core.async cljs.reader] #{}]
    [:devel '[speclj.core weasel.repl cards.devel] #{:cljs}]
@@ -82,18 +83,18 @@
       state)))
 
 (defrecord ShadowBuildWatcher
-    [build-key]
+    [build-type]
   component/Lifecycle
-  (start [{:keys [build-key]
+  (start [{:keys [build-type]
            :as component}]
-    (assert (get build-config build-key) "Unknown build-type.")
+    (assert (get build-config build-type) (format "Unknown build-type: '%s'" build-type))
     (println "Starting Shadow Build")
     (let [scanning-channel (chan) ; Closing the scanning-channel causes the scanner to stop.
-          build-fn (partial build-step build-key)
-          initial-state (->> (build-config build-key)
+          build-fn (partial build-step build-type)
+          initial-state (->> (build-config build-type)
                              initial-build-state
                              build-fn)]
-      (println "Initial build complete. Watching.")
+      (println "Initial build complete. Watching...")
       (go
         (loop [i 0
                state initial-state]
@@ -114,4 +115,4 @@
       (close! channel))
     (assoc component
       :scanning-channel nil
-      :build-key nil)))
+      :build-type nil)))

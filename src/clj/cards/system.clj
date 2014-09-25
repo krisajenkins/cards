@@ -4,8 +4,8 @@
             [cards.webserver :as ws]))
 
 (defn cards-dev-system
-  [{:keys [webserver-port]
+  [{:keys [webserver-port build-type]
     :as config-options}]
   (component/system-map
    :webserver (ws/map->Webserver {:port webserver-port})
-   :shadowbuild (shadow/->ShadowBuildWatcher :dev)))
+   :shadowbuild (shadow/->ShadowBuildWatcher build-type)))
