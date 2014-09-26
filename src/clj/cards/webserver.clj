@@ -36,6 +36,8 @@
                      :prod)
            (link-to-js-bundles request ["/devel.js"]))]))
 
+         [:script "cards.core.main()"]]))
+
 (defn get-pages
   []
   (stasis/merge-page-sources

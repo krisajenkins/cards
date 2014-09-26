@@ -24,7 +24,7 @@
 
 (def app {:db (initial-db)})
 
-(defn -main
+(defn ^:export main
   []
   (let [event-loop (render/setup (:db app)
                                  "#content")]
@@ -33,5 +33,3 @@
         (js/console.log "Received message" (pr-str message))
         (process-message message (:db app))
         (recur)))))
-
-(-main)
