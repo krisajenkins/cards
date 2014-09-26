@@ -34,7 +34,7 @@
 
          (when (not= (:build-type request)
                      :prod)
-           (link-to-js-bundles request ["/devel.js"]))]))
+           (link-to-js-bundles request ["/devel.js" "/test.js"]))
 
          [:script "cards.core.main()"]]))
 
@@ -54,7 +54,8 @@
           (assets/load-bundles "react" {"/react.js" ["/react.js"]})
           (assets/load-bundles "out" {"/cljs.js" ["/cljs.js"]
                                       "/cards.js" ["/cards.js"]
-                                      "/devel.js" ["/devel.js"]})))
+                                      "/devel.js" ["/devel.js"]
+                                      "/test.js" ["/test.js"]})))
 
 (defn export-site!
   [build-type]

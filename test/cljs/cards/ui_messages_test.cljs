@@ -14,4 +14,5 @@
                            [?e :age ?age]]}
                  @db)))))
 
-(t/test-ns 'cards.ui-messages-test)
+(enable-console-print!)
+(println (t/test-ns 'cards.ui-messages-test))
