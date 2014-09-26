@@ -51,7 +51,7 @@
           (assets/load-bundles "META-INF/resources/webjars/bootstrap/3.2.0"
                                {"/css/bootstrap.css" ["/css/bootstrap.css"]
                                 "/css/bootstrap.css.map" ["/css/bootstrap.css.map"]})
-          (assets/load-bundles "react" {"/react.js" ["/react.js"]})
+          (assets/load-bundles "react" {"/react.js" ["/react.min.js"]})
           (assets/load-bundles "out" {"/cljs.js" ["/cljs.js"]
                                       "/cards.js" ["/cards.js"]
                                       "/devel.js" ["/devel.js"]
