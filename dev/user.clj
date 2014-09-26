@@ -13,7 +13,7 @@
   (atom (cards-dev-system {:webserver-port 8000
                            :build-type :dev})))
 
-(defn go
+(defn start
   "Initializes and starts the system running."
   []
   (swap! system component/start)
@@ -31,7 +31,7 @@
   (time
    (do
      (swap! system component/stop)
-     (refresh :after 'user/go))))
+     (refresh :after 'user/start))))
 
 (defn cljs
   ([]
