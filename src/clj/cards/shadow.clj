@@ -90,32 +90,36 @@
           (build-fn (shadow/reload-modified-files! state scan-results)))
       state)))
 
+(defn autobuild
+  [build-type]
+  (println "Starting Shadow Build")
+  (let [scanning-channel (chan) ; Closing the scanning-channel causes the scanner to stop.
+        build-fn (partial build-step build-type)
+        initial-state (->> (build-config build-type)
+                           initial-build-state
+                           build-fn)]
+    (println "Initial build complete. Watching...")
+    (go
+      (loop [i 0
+             state initial-state]
+        (let [t (timeout 200)
+              [message port] (alts! [scanning-channel t])]
+          (when-not (and (= port scanning-channel)
+                         (nil? message))
+            (recur (mod (inc i) 10)
+                   (rebuild-if-changed! build-fn
+                                        state
+                                        (zero? i)))))))
+    scanning-channel))
+
 (defrecord ShadowBuildWatcher
     [build-type]
   component/Lifecycle
   (start [{:keys [build-type]
            :as component}]
     (assert (get build-config build-type) (format "Unknown build-type: '%s'" build-type))
-    (println "Starting Shadow Build")
-    (let [scanning-channel (chan) ; Closing the scanning-channel causes the scanner to stop.
-          build-fn (partial build-step build-type)
-          initial-state (->> (build-config build-type)
-                             initial-build-state
-                             build-fn)]
-      (println "Initial build complete. Watching...")
-      (go
-        (loop [i 0
-               state initial-state]
-          (let [t (timeout 200)
-                [message port] (alts! [scanning-channel t])]
-            (when-not (and (= port scanning-channel)
-                           (nil? message))
-              (recur (mod (inc i) 10)
-                     (rebuild-if-changed! build-fn
-                                          state
-                                          (zero? i)))))))
-
-      (assoc component :scanning-channel scanning-channel)))
+    (assoc component
+      :scanning-channel (autobuild build-type)))
 
   (stop [component]
     (println "Stopping Shadow Build")

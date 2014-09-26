@@ -14,6 +14,7 @@
             [optimus.strategies :as strategies]
             [optimus.prime :as optimus]
             [optimus.export :as export]
+            [optimus.link :as link]
             [optimus.hiccup :refer [link-to-css-bundles link-to-js-bundles]]
             [stasis.core :as stasis]))
 
@@ -24,15 +25,16 @@
           [:meta {:charset "utf-8"}]
           [:meta {:name "viewport"
                   :content "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui"}]
-          (link-to-css-bundles request ["/bootstrap.css"])]
 
-         [:body
-          [:div#content]]
+          (link-to-css-bundles request ["/css/bootstrap.css"])]
 
-         (link-to-js-bundles request ["/react.js"
-                                      "/cljs.js"
-                                      "/cards.js"
-                                      "/devel.js"])]))
+         [:body [:div#content]]
+
+         (link-to-js-bundles request ["/react.js" "/cljs.js" "/cards.js"])
+
+         (when (not= (:build-type request)
+                     :prod)
+           (link-to-js-bundles request ["/devel.js"]))]))
 
 (defn get-pages
   []
@@ -44,26 +46,26 @@
   (concat (assets/load-assets "public" [#".+"])
           (assets/load-assets "out" [#"/.+\.js$"
                                      #"/.+\.js.map$"])
+          (assets/load-bundles "META-INF/resources/webjars/bootstrap/3.2.0"
+                               {"/css/bootstrap.css" ["/css/bootstrap.css"]
+                                "/css/bootstrap.css.map" ["/css/bootstrap.css.map"]})
           (assets/load-bundles "react" {"/react.js" ["/react.js"]})
           (assets/load-bundles "out" {"/cljs.js" ["/cljs.js"]
                                       "/cards.js" ["/cards.js"]
-                                      "/devel.js" ["/devel.js"]})
-          (assets/load-bundles "META-INF/resources/webjars/bootstrap/3.2.0"
-                               {"/bootstrap.css" ["/css/bootstrap.css"
-                                                  "/css/bootstrap.css.map"
-                                                  "/fonts/glyphicons-halflings-regular.woff"
-                                                  "/fonts/glyphicons-halflings-regular.ttf"
-                                                  "/fonts/glyphicons-halflings-regular.svg"]})))
+                                      "/devel.js" ["/devel.js"]})))
 
-(defn export
-  []
+(defn export-site!
+  [build-type]
   (time
    (let [target-dir "target/site"
          assets (as-> (get-assets) $
-                      (optimizations/all $ {})
+                      (if (= build-type :prod)
+                        (optimizations/all $ {})
+                        (optimizations/none $ {}))
                       (remove :bundled $)
                       (remove :outdated $))
-         request {:optimus-assets assets}]
+         request {:optimus-assets assets
+                  :build-type build-type}]
      (stasis/empty-directory! target-dir)
      (optimus.export/save-assets assets target-dir)
      (stasis/export-pages (get-pages) target-dir request))))
@@ -91,3 +93,15 @@
     (when shutdown-fn
       (shutdown-fn :timeout 100))
     (assoc component :shutdown-fn nil)))
+
+(defrecord Exporter
+    [build-type]
+  component/Lifecycle
+  (start [component]
+    (println "Starting Exporter")
+    (export-site! (:build-type component))
+    component)
+  (stop [component]
+    (println "Stopping Exporter")
+    (assoc component
+      :build-type nil)))

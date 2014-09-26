@@ -3,11 +3,28 @@
             [cards.shadow :as shadow]
             [cards.webserver :as ws]))
 
-(defn cards-dev-system
-  [{:keys [webserver-port build-type]
-    :as config-options}]
+(defmulti cards-system
+  (fn [config] (:build-type config)))
+
+(defmethod cards-system :dev
+  [{:keys [build-type webserver-port]
+    :as config}]
   (component/system-map
    :shadowbuild (shadow/->ShadowBuildWatcher build-type)
-   :webserver (component/using
-               (ws/map->Webserver {:port webserver-port})
-               [:shadowbuild])))
+   :webserver (component/using (ws/map->Webserver {:port webserver-port})
+                               [:shadowbuild])))
+
+(defmethod cards-system :prod
+  [{:keys [build-type webserver-port]
+    :as config}]
+  (component/system-map
+   :shadowbuild (shadow/->ShadowBuildWatcher build-type)
+   :exporter (component/using (ws/->Exporter build-type)
+                              [:shadowbuild])))
+
+
+(defn -main
+  []
+  (let [system (atom (cards-system {:build-type :prod}))]
+    (swap! system component/start)
+    (swap! system component/stop)))

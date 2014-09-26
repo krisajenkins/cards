@@ -1,6 +1,5 @@
 /target
-/resources/dev
-/resources/prod
+/resources/out
 /classes
 /out
 /checkouts

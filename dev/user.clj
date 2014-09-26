@@ -3,15 +3,15 @@
   not be included in a production build of the application."
   (:require [clojure.tools.namespace.repl :refer [refresh refresh-all]]
             [com.stuartsierra.component :as component]
-            [cards.system :refer [cards-dev-system]]
+            [cards.system :refer [cards-system]]
             [cemerick.piggieback :as piggieback]
             [weasel.repl.websocket :refer [repl-env]]))
 
 (def system
   "A Var containing an object representing the application under
   development."
-  (atom (cards-dev-system {:webserver-port 8000
-                           :build-type :dev})))
+  (atom (cards-system {:build-type :dev
+                       :webserver-port 8000})))
 
 (defn start
   "Initializes and starts the system running."
