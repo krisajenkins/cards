@@ -28,8 +28,10 @@
 (defn reset
   "Stops the system, reloads modified source files, and restarts it."
   []
-  (swap! system component/stop)
-  (refresh :after 'user/go))
+  (time
+   (do
+     (swap! system component/stop)
+     (refresh :after 'user/go))))
 
 (defn cljs
   ([]

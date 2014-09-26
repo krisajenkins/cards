@@ -24,12 +24,12 @@
          :optimizations :simple
          :pretty-print false
          :work-dir (io/file "target/cljs-work")
-         :public-dir (io/file "resources/dev")}
+         :public-dir (io/file "resources/out")}
    :prod {:resource-paths ["src/cljs" "test/cljs"]
           :optimizations :advanced
           :pretty-print false
           :work-dir (io/file "target/cljs-work")
-          :public-dir (io/file "resources/prod")
+          :public-dir (io/file "resources/out")
           :preamble ["react/react.js"]
           :externs ["react/externs/react.js"]}})
 

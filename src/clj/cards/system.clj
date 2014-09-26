@@ -7,5 +7,7 @@
   [{:keys [webserver-port build-type]
     :as config-options}]
   (component/system-map
-   :webserver (ws/map->Webserver {:port webserver-port})
-   :shadowbuild (shadow/->ShadowBuildWatcher build-type)))
+   :shadowbuild (shadow/->ShadowBuildWatcher build-type)
+   :webserver (component/using
+               (ws/map->Webserver {:port webserver-port})
+               [:shadowbuild])))

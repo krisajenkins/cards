@@ -5,61 +5,73 @@
             [compojure.route :refer [resources]]
             [com.stuartsierra.component :as component]
             [hiccup.core :refer [html]]
-            [optimus.assets :as assets]
-            [optimus.optimizations :as optimizations]
-            [optimus.strategies :refer [serve-live-assets]]
-            [optimus.prime :as optimus]
-            [optimus.hiccup :refer [link-to-css-bundles link-to-js-bundles]]
             [org.httpkit.server :refer [run-server]]
             [ring.middleware.reload :refer [wrap-reload]]
             [ring.middleware.content-type :refer [wrap-content-type]]
             [ring.middleware.not-modified :refer [wrap-not-modified]]
+            [optimus.assets :as assets]
+            [optimus.optimizations :as optimizations]
+            [optimus.strategies :as strategies]
+            [optimus.prime :as optimus]
+            [optimus.export :as export]
+            [optimus.hiccup :refer [link-to-css-bundles link-to-js-bundles]]
             [stasis.core :as stasis]))
 
-(def index-page
-  [:html {:lang "en"}
-   [:head
-    [:meta {:charset "utf-8"}]
-    [:meta {:name "viewport"
-            :content "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui"}]
-    [:link {:rel "stylesheet" :href "/css/bootstrap.css"}]]
+(defn index-page
+  [request]
+  (html [:html {:lang "en"}
+         [:head
+          [:meta {:charset "utf-8"}]
+          [:meta {:name "viewport"
+                  :content "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui"}]
+          (link-to-css-bundles request ["/bootstrap.css"])]
 
-   [:body
-    [:div#content]]
+         [:body
+          [:div#content]]
 
-   (for [script ["/react.js"
-                 "/cljs.js"
-                 "/cards.js"
-                 "/devel.js"]]
-     [:script {:src script}])])
+         (link-to-js-bundles request ["/react.js"
+                                      "/cljs.js"
+                                      "/cards.js"
+                                      "/devel.js"])]))
 
-(defn files-from-resource
-  [directory files]
-  (zipmap files
-          (map #(slurp (io/resource (str directory %)))
-               files)))
-
-(def pages
+(defn get-pages
+  []
   (stasis/merge-page-sources
-   {:dev (stasis/slurp-directory "resources/dev/" #"\.(js|map)$")
-    :public (stasis/slurp-directory "resources/public" #".*\..*")
-    :react (files-from-resource "react" ["/react.js"])
-    :bootstrap (files-from-resource "META-INF/resources/webjars/bootstrap/3.2.0"
-                                    ["/css/bootstrap.css"
-                                     "/css/bootstrap.css.map"
-                                     "/fonts/glyphicons-halflings-regular.woff"
-                                     "/fonts/glyphicons-halflings-regular.ttf"
-                                     "/fonts/glyphicons-halflings-regular.svg"])
-    :generated {"/index.html" (html index-page)}}))
+   {:generated {"/index.html" index-page}}))
 
-((defn export
-   []
-   (let [target "target/site"]
-     (stasis/empty-directory! target)
-     (stasis/export-pages pages target))))
+(defn get-assets
+  []
+  (concat (assets/load-assets "public" [#".+"])
+          (assets/load-assets "out" [#"/.+\.js$"
+                                     #"/.+\.js.map$"])
+          (assets/load-bundles "react" {"/react.js" ["/react.js"]})
+          (assets/load-bundles "out" {"/cljs.js" ["/cljs.js"]
+                                      "/cards.js" ["/cards.js"]
+                                      "/devel.js" ["/devel.js"]})
+          (assets/load-bundles "META-INF/resources/webjars/bootstrap/3.2.0"
+                               {"/bootstrap.css" ["/css/bootstrap.css"
+                                                  "/css/bootstrap.css.map"
+                                                  "/fonts/glyphicons-halflings-regular.woff"
+                                                  "/fonts/glyphicons-halflings-regular.ttf"
+                                                  "/fonts/glyphicons-halflings-regular.svg"]})))
 
-(def app
-  (-> (stasis/serve-pages pages)
+(defn export
+  []
+  (time
+   (let [target-dir "target/site"
+         assets (as-> (get-assets) $
+                      (optimizations/all $ {})
+                      (remove :bundled $)
+                      (remove :outdated $))
+         request {:optimus-assets assets}]
+     (stasis/empty-directory! target-dir)
+     (optimus.export/save-assets assets target-dir)
+     (stasis/export-pages (get-pages) target-dir request))))
+
+(defn app
+  []
+  (-> (stasis/serve-pages get-pages)
+      (optimus/wrap get-assets optimizations/none strategies/serve-live-assets)
       wrap-reload
       handler/site))
 
@@ -69,7 +81,7 @@
   component/Lifecycle
   (start [component]
     (println "Starting webserver.")
-    (assoc component :shutdown-fn (run-server app
+    (assoc component :shutdown-fn (run-server (app)
                                               {:port port
                                                :join? false})))
 
